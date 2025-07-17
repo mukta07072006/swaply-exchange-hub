@@ -1,8 +1,17 @@
 import { useState } from "react";
-import { Search, Filter, MapPin } from "lucide-react";
+import { Search, Filter, MapPin, Bell, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import SwapCard from "@/components/SwapCard";
+import ChatScreen from "@/screens/ChatScreen";
+import { 
+  StatsWidget, 
+  TrendingWidget, 
+  QuickActionsWidget, 
+  RecentActivityWidget, 
+  AIInsightsWidget,
+  SwapProgressWidget 
+} from "@/components/Widgets";
 
 // Mock data for demonstration
 const mockSwapItems = [
@@ -53,10 +62,12 @@ const mockSwapItems = [
 const HomeScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [showChat, setShowChat] = useState(false);
+  const [showWidgets, setShowWidgets] = useState(true);
 
   const handleRequestSwap = (itemId: string) => {
-    // This will be connected to the swap request system
-    console.log("Requesting swap for item:", itemId);
+    // Open chat for this swap request
+    setShowChat(true);
   };
 
   const handleToggleFavorite = (itemId: string) => {
@@ -67,27 +78,62 @@ const HomeScreen = () => {
     );
   };
 
+  const handleQuickAction = (action: string) => {
+    if (action === "messages") {
+      setShowChat(true);
+    }
+    console.log("Quick action:", action);
+  };
+
   const filteredItems = mockSwapItems.filter(item =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  if (showChat) {
+    return (
+      <ChatScreen
+        recipientName="Alex Johnson"
+        swapItem={{
+          title: "iPhone 13 Pro",
+          image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400"
+        }}
+        onBack={() => setShowChat(false)}
+      />
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 px-4 py-4 border-b border-border">
+      <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 px-4 py-4 border-b border-border">
         <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Swaply</h1>
-            <div className="flex items-center text-sm text-muted-foreground">
-              <MapPin className="h-3 w-3 mr-1" />
-              San Francisco Bay Area
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="mr-2"
+              onClick={() => setShowWidgets(!showWidgets)}
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Swaply</h1>
+              <div className="flex items-center text-sm text-muted-foreground">
+                <MapPin className="h-3 w-3 mr-1" />
+                San Francisco Bay Area
+              </div>
             </div>
           </div>
-          <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="icon">
+              <Bell className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon">
+              <Filter className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         {/* Search Bar */}
@@ -97,18 +143,41 @@ const HomeScreen = () => {
             placeholder="Search items to swap..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 bg-white"
           />
         </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-20">
+        {/* Widgets Section */}
+        {showWidgets && (
+          <div className="space-y-4 mb-6">
+            <div className="grid grid-cols-1 gap-4">
+              <StatsWidget />
+              <AIInsightsWidget />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <QuickActionsWidget onAction={handleQuickAction} />
+              <TrendingWidget />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SwapProgressWidget />
+              <RecentActivityWidget />
+            </div>
+          </div>
+        )}
+
+        {/* Available Swaps Section */}
         <div className="mb-4">
-          <h2 className="text-lg font-semibold mb-2">Available Swaps</h2>
-          <p className="text-sm text-muted-foreground">
-            {filteredItems.length} items available for exchange
-          </p>
+          <h2 className="text-lg font-semibold mb-2 flex items-center">
+            Available Swaps
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              ({filteredItems.length} items)
+            </span>
+          </h2>
         </div>
 
         {filteredItems.length > 0 ? (
