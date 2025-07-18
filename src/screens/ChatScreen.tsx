@@ -32,6 +32,7 @@ interface Message {
 }
 
 interface ChatScreenProps {
+  user: any;
   recipientName: string;
   recipientAvatar?: string;
   swapItem?: {
@@ -41,7 +42,7 @@ interface ChatScreenProps {
   onBack: () => void;
 }
 
-const ChatScreen = ({ recipientName, recipientAvatar, swapItem, onBack }: ChatScreenProps) => {
+const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: ChatScreenProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",

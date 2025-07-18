@@ -4,6 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import SwapCard from "@/components/SwapCard";
 import ChatScreen from "@/screens/ChatScreen";
+import { useSwapItems } from "@/hooks/useSwapItems";
+import { useFavorites } from "@/hooks/useFavorites";
+import type { User } from '@supabase/supabase-js';
 import { 
   StatsWidget, 
   TrendingWidget, 
@@ -13,69 +16,25 @@ import {
   SwapProgressWidget 
 } from "@/components/Widgets";
 
-// Mock data for demonstration
-const mockSwapItems = [
-  {
-    id: "1",
-    title: "iPhone 13 Pro",
-    description: "Excellent condition iPhone 13 Pro with original box and charger. Perfect for someone looking to upgrade their phone.",
-    category: "Electronics",
-    images: ["https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400"],
-    preferredItems: ["MacBook", "iPad", "Android Phone"],
-    location: "San Francisco, CA",
-    owner: {
-      name: "Alex Johnson",
-      avatar: "",
-    },
-    createdAt: "2 days ago",
-  },
-  {
-    id: "2",
-    title: "Vintage Leather Jacket",
-    description: "Authentic vintage leather jacket from the 80s. Size medium, genuine leather with minimal wear.",
-    category: "Fashion",
-    images: ["https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400"],
-    preferredItems: ["Designer Shoes", "Watch", "Sunglasses"],
-    location: "New York, NY",
-    owner: {
-      name: "Sarah Chen",
-      avatar: "",
-    },
-    createdAt: "1 day ago",
-  },
-  {
-    id: "3",
-    title: "Mountain Bike",
-    description: "Well-maintained mountain bike perfect for trails. Recently serviced with new tires.",
-    category: "Sports",
-    images: ["https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400"],
-    preferredItems: ["Road Bike", "Skateboard", "Sports Equipment"],
-    location: "Seattle, WA",
-    owner: {
-      name: "Mike Rodriguez",
-      avatar: "",
-    },
-    createdAt: "3 days ago",
-  },
-];
+interface HomeScreenProps {
+  user: User;
+}
 
-const HomeScreen = () => {
+const HomeScreen = ({ user }: HomeScreenProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [favorites, setFavorites] = useState<string[]>([]);
   const [showChat, setShowChat] = useState(false);
   const [showWidgets, setShowWidgets] = useState(true);
+  const [selectedChatItem, setSelectedChatItem] = useState<any>(null);
+  
+  const { items, loading } = useSwapItems();
+  const { favorites, toggleFavorite } = useFavorites(user);
 
   const handleRequestSwap = (itemId: string) => {
-    // Open chat for this swap request
-    setShowChat(true);
-  };
-
-  const handleToggleFavorite = (itemId: string) => {
-    setFavorites(prev => 
-      prev.includes(itemId) 
-        ? prev.filter(id => id !== itemId)
-        : [...prev, itemId]
-    );
+    const item = items.find(i => i.id === itemId);
+    if (item) {
+      setSelectedChatItem(item);
+      setShowChat(true);
+    }
   };
 
   const handleQuickAction = (action: string) => {
@@ -85,21 +44,25 @@ const HomeScreen = () => {
     console.log("Quick action:", action);
   };
 
-  const filteredItems = mockSwapItems.filter(item =>
+  const filteredItems = items.filter(item =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (showChat) {
+  if (showChat && selectedChatItem) {
     return (
       <ChatScreen
-        recipientName="Alex Johnson"
+        user={user}
+        recipientName={selectedChatItem.owner.name}
         swapItem={{
-          title: "iPhone 13 Pro",
-          image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400"
+          title: selectedChatItem.title,
+          image: selectedChatItem.images[0] || "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400"
         }}
-        onBack={() => setShowChat(false)}
+        onBack={() => {
+          setShowChat(false);
+          setSelectedChatItem(null);
+        }}
       />
     );
   }
@@ -180,14 +143,19 @@ const HomeScreen = () => {
           </h2>
         </div>
 
-        {filteredItems.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading items...</p>
+          </div>
+        ) : filteredItems.length > 0 ? (
           <div className="space-y-4">
             {filteredItems.map((item) => (
               <SwapCard
                 key={item.id}
                 item={item}
                 onRequestSwap={handleRequestSwap}
-                onToggleFavorite={handleToggleFavorite}
+                onToggleFavorite={() => toggleFavorite(item.id)}
                 isFavorited={favorites.includes(item.id)}
               />
             ))}

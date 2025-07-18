@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,30 +7,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { X, Plus, Camera, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from '@supabase/supabase-js';
 
-const categories = [
-  "Electronics",
-  "Fashion",
-  "Sports",
-  "Books",
-  "Home & Garden",
-  "Vehicles",
-  "Collectibles",
-  "Other"
-];
+interface AddItemScreenProps {
+  user: User;
+}
 
-const AddItemScreen = () => {
+const AddItemScreen = ({ user }: AddItemScreenProps) => {
   const [images, setImages] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<any[]>([]);
   const [preferredItems, setPreferredItems] = useState<string[]>([]);
   const [newPreferredItem, setNewPreferredItem] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // Load categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+      
+      if (data) {
+        setCategories(data);
+      }
+    };
+    
+    fetchCategories();
+  }, []);
+
   const handleImageUpload = () => {
-    // Mock image upload - in real app, this would use file picker
+    // Mock image upload - in real app, this would use file picker and storage
     const mockImageUrl = `https://images.unsplash.com/photo-${Date.now()}?w=400`;
     if (images.length < 4) {
       setImages([...images, mockImageUrl]);
@@ -53,7 +65,7 @@ const AddItemScreen = () => {
   };
 
   const handleSubmit = async () => {
-    if (!title.trim() || !description.trim() || !category) {
+    if (!title.trim() || !description.trim() || !categoryId) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -64,9 +76,22 @@ const AddItemScreen = () => {
 
     setIsSubmitting(true);
     
-    // Mock API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const { error } = await supabase
+        .from('swap_items')
+        .insert({
+          user_id: user.id,
+          title: title.trim(),
+          description: description.trim(),
+          category_id: categoryId,
+          images,
+          preferred_items: preferredItems,
+          location: 'San Francisco, CA', // Default location
+          status: 'available'
+        });
+
+      if (error) throw error;
+
       toast({
         title: "Item Posted!",
         description: "Your item has been successfully added to the marketplace.",
@@ -76,10 +101,18 @@ const AddItemScreen = () => {
       setImages([]);
       setTitle("");
       setDescription("");
-      setCategory("");
+      setCategoryId("");
       setPreferredItems([]);
       setNewPreferredItem("");
-    }, 2000);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to post item",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -157,14 +190,14 @@ const AddItemScreen = () => {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Category *</label>
-                <Select value={category} onValueChange={setCategory}>
+                <Select value={categoryId} onValueChange={setCategoryId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

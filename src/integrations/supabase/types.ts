@@ -14,7 +14,269 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      chat_rooms: {
+        Row: {
+          created_at: string
+          id: string
+          participant_1: string
+          participant_2: string
+          swap_request_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          participant_1: string
+          participant_2: string
+          swap_request_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          participant_1?: string
+          participant_2?: string
+          swap_request_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_rooms_swap_request_id_fkey"
+            columns: ["swap_request_id"]
+            isOneToOne: true
+            referencedRelation: "swap_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      favorites: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "swap_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          chat_room_id: string
+          content: string
+          created_at: string
+          id: string
+          image_url: string | null
+          message_type: string | null
+          sender_id: string
+          status: string | null
+        }
+        Insert: {
+          chat_room_id: string
+          content: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          message_type?: string | null
+          sender_id: string
+          status?: string | null
+        }
+        Update: {
+          chat_room_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          message_type?: string | null
+          sender_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_chat_room_id_fkey"
+            columns: ["chat_room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          location: string | null
+          rating: number | null
+          total_swaps: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          location?: string | null
+          rating?: number | null
+          total_swaps?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          location?: string | null
+          rating?: number | null
+          total_swaps?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      swap_items: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string
+          id: string
+          images: string[] | null
+          location: string | null
+          preferred_items: string[] | null
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          images?: string[] | null
+          location?: string | null
+          preferred_items?: string[] | null
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          images?: string[] | null
+          location?: string | null
+          preferred_items?: string[] | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "swap_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      swap_requests: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          offered_item_id: string
+          owner_id: string
+          requested_item_id: string
+          requester_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          offered_item_id: string
+          owner_id: string
+          requested_item_id: string
+          requester_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          offered_item_id?: string
+          owner_id?: string
+          requested_item_id?: string
+          requester_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "swap_requests_offered_item_id_fkey"
+            columns: ["offered_item_id"]
+            isOneToOne: false
+            referencedRelation: "swap_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "swap_requests_requested_item_id_fkey"
+            columns: ["requested_item_id"]
+            isOneToOne: false
+            referencedRelation: "swap_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
