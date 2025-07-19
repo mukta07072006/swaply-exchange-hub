@@ -4,6 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Settings, Edit3, Star, Calendar, MapPin, Plus } from "lucide-react";
+import type { User } from '@supabase/supabase-js';
+
+interface ProfileScreenProps {
+  user: User;
+}
 
 // Mock user data
 const mockUser = {
@@ -59,9 +64,19 @@ const mockUserItems = [
   }
 ];
 
-const ProfileScreen = () => {
-  const [user] = useState(mockUser);
+const ProfileScreen = ({ user }: ProfileScreenProps) => {
   const [userItems] = useState(mockUserItems);
+  
+  // Use actual user data when available, fall back to mock for display info
+  const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';
+  const userProfile = {
+    name: displayName,
+    email: user.email || '',
+    location: 'Location not set',
+    rating: 5.0,
+    totalSwaps: 0,
+    activeListings: userItems.filter(item => item.status === "active").length
+  };
 
   const activeItems = userItems.filter(item => item.status === "active");
   const swappedItems = userItems.filter(item => item.status === "swapped");
@@ -137,33 +152,33 @@ const ProfileScreen = () => {
             <div className="flex items-center space-x-4 mb-4">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-2xl font-bold text-primary">
-                  {user.name.charAt(0)}
+                  {userProfile.name.charAt(0)}
                 </span>
               </div>
               <div className="flex-1">
-                <h2 className="text-xl font-bold">{user.name}</h2>
-                <p className="text-muted-foreground">{user.email}</p>
+                <h2 className="text-xl font-bold">{userProfile.name}</h2>
+                <p className="text-muted-foreground">{userProfile.email}</p>
                 <div className="flex items-center text-sm text-muted-foreground mt-1">
                   <MapPin className="h-3 w-3 mr-1" />
-                  {user.location}
+                  {userProfile.location}
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <div className="font-semibold text-lg">{user.totalSwaps}</div>
+                <div className="font-semibold text-lg">{userProfile.totalSwaps}</div>
                 <div className="text-xs text-muted-foreground">Total Swaps</div>
               </div>
               <div>
                 <div className="flex items-center justify-center">
                   <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                  <span className="font-semibold text-lg">{user.rating}</span>
+                  <span className="font-semibold text-lg">{userProfile.rating}</span>
                 </div>
                 <div className="text-xs text-muted-foreground">Rating</div>
               </div>
               <div>
-                <div className="font-semibold text-lg">{user.activeListings}</div>
+                <div className="font-semibold text-lg">{userProfile.activeListings}</div>
                 <div className="text-xs text-muted-foreground">Active Items</div>
               </div>
             </div>
