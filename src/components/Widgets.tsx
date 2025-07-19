@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,13 +20,44 @@ interface WidgetProps {
   className?: string;
 }
 
-export const StatsWidget = ({ className }: WidgetProps) => {
-  const stats = [
-    { label: "Active Swaps", value: "12", trend: "+3", icon: TrendingUp, color: "text-green-600" },
-    { label: "Community", value: "2.4K", trend: "+12%", icon: Users, color: "text-blue-600" },
-    { label: "Avg Response", value: "2h", trend: "-15m", icon: Clock, color: "text-purple-600" },
-    { label: "Rating", value: "4.9", trend: "+0.1", icon: Star, color: "text-yellow-600" },
-  ];
+export const StatsWidget = ({ className, user }: WidgetProps & { user?: any }) => {
+  const [stats, setStats] = useState([
+    { label: "Active Swaps", value: "0", trend: "+0", icon: TrendingUp, color: "text-green-600" },
+    { label: "Community", value: "0", trend: "+0%", icon: Users, color: "text-blue-600" },
+    { label: "Avg Response", value: "-", trend: "-", icon: Clock, color: "text-purple-600" },
+    { label: "Rating", value: "5.0", trend: "+0", icon: Star, color: "text-yellow-600" },
+  ]);
+  
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Get total items count for community stat
+        const { count: totalItems } = await supabase
+          .from('swap_items')
+          .select('*', { count: 'exact', head: true });
+          
+        // Get user's active items
+        const { count: userActiveItems } = await supabase
+          .from('swap_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user?.id)
+          .eq('status', 'available');
+          
+        setStats([
+          { label: "Active Items", value: userActiveItems?.toString() || "0", trend: "+0", icon: TrendingUp, color: "text-green-600" },
+          { label: "Total Items", value: totalItems?.toString() || "0", trend: "+0%", icon: Users, color: "text-blue-600" },
+          { label: "Avg Response", value: "2h", trend: "-", icon: Clock, color: "text-purple-600" },
+          { label: "Rating", value: "5.0", trend: "+0", icon: Star, color: "text-yellow-600" },
+        ]);
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+    
+    if (user) {
+      fetchStats();
+    }
+  }, [user]);
 
   return (
     <Card className={`animate-fade-in ${className}`}>
@@ -54,12 +86,46 @@ export const StatsWidget = ({ className }: WidgetProps) => {
 };
 
 export const TrendingWidget = ({ className }: WidgetProps) => {
-  const trending = [
-    { category: "Electronics", count: 45, change: "+12%" },
-    { category: "Fashion", count: 32, change: "+8%" },
-    { category: "Books", count: 28, change: "+15%" },
-    { category: "Sports", count: 19, change: "+5%" },
-  ];
+  const [trending, setTrending] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('swap_items')
+          .select(`
+            categories (name),
+            category_id
+          `)
+          .eq('status', 'available');
+          
+        if (error) throw error;
+        
+        // Count items per category
+        const categoryCounts: Record<string, number> = {};
+        data?.forEach(item => {
+          const categoryName = item.categories?.name || 'Other';
+          categoryCounts[categoryName] = (categoryCounts[categoryName] || 0) + 1;
+        });
+        
+        // Convert to trending format
+        const trendingData = Object.entries(categoryCounts)
+          .map(([category, count]) => ({
+            category,
+            count,
+            change: '+0%' // TODO: Implement real change tracking
+          }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 4);
+          
+        setTrending(trendingData);
+      } catch (error) {
+        console.error('Error fetching trending:', error);
+      }
+    };
+    
+    fetchTrending();
+  }, []);
 
   return (
     <Card className={`animate-fade-in ${className}`}>

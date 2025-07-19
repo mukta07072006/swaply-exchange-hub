@@ -10,7 +10,6 @@ import {
   Phone, 
   Video, 
   MoreVertical, 
-  Image as ImageIcon, 
   Smile, 
   Mic,
   Check,
@@ -20,20 +19,13 @@ import {
   Camera,
   Paperclip
 } from "lucide-react";
-
-interface Message {
-  id: string;
-  text: string;
-  sender: "me" | "other";
-  timestamp: string;
-  status: "sent" | "delivered" | "read";
-  type: "text" | "image" | "system";
-  image?: string;
-}
+import { useRealTimeChat } from "@/hooks/useRealTimeChat";
 
 interface ChatScreenProps {
   user: any;
   recipientName: string;
+  recipientUserId?: string;
+  swapItemId?: string;
   recipientAvatar?: string;
   swapItem?: {
     title: string;
@@ -42,54 +34,12 @@ interface ChatScreenProps {
   onBack: () => void;
 }
 
-const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: ChatScreenProps) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      text: "System: Swap request sent for iPhone 13 Pro",
-      sender: "other",
-      timestamp: "10:30 AM",
-      status: "read",
-      type: "system"
-    },
-    {
-      id: "2",
-      text: "Hi! I'm interested in your iPhone. Is it still available?",
-      sender: "other",
-      timestamp: "10:32 AM",
-      status: "read",
-      type: "text"
-    },
-    {
-      id: "3",
-      text: "Yes, it's available! What would you like to trade for it?",
-      sender: "me",
-      timestamp: "10:35 AM",
-      status: "read",
-      type: "text"
-    },
-    {
-      id: "4",
-      text: "I have an iPad Pro 11\" that I'd like to trade. It's in excellent condition.",
-      sender: "other",
-      timestamp: "10:36 AM",
-      status: "read",
-      type: "text"
-    },
-    {
-      id: "5",
-      text: "That sounds perfect! Can you send me some photos?",
-      sender: "me",
-      timestamp: "10:38 AM",
-      status: "delivered",
-      type: "text"
-    }
-  ]);
-  
+const ChatScreen = ({ user, recipientName, recipientUserId, swapItemId, recipientAvatar, swapItem, onBack }: ChatScreenProps) => {
   const [newMessage, setNewMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const { messages, loading, sendMessage } = useRealTimeChat(user, recipientUserId, swapItemId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -99,31 +49,10 @@ const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: 
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = () => {
+  const handleSendMessage = () => {
     if (!newMessage.trim()) return;
-
-    const message: Message = {
-      id: Date.now().toString(),
-      text: newMessage,
-      sender: "me",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: "sent",
-      type: "text"
-    };
-
-    setMessages(prev => [...prev, message]);
+    sendMessage(newMessage);
     setNewMessage("");
-
-    // Simulate message delivery
-    setTimeout(() => {
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === message.id 
-            ? { ...msg, status: "delivered" as const }
-            : msg
-        )
-      );
-    }, 1000);
   };
 
   const startVoiceRecord = () => {
@@ -134,28 +63,20 @@ const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: 
     }, 3000);
   };
 
-  const sendImage = () => {
-    const imageMessage: Message = {
-      id: Date.now().toString(),
-      text: "Photo",
-      sender: "me",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: "sent",
-      type: "image",
-      image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400"
-    };
-    setMessages(prev => [...prev, imageMessage]);
+  const handleSendImage = () => {
+    // TODO: Implement image upload to storage
+    sendMessage("Photo", "image", "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400");
   };
 
-  const MessageBubble = ({ message }: { message: Message }) => {
-    const isMe = message.sender === "me";
-    const isSystem = message.type === "system";
+  const MessageBubble = ({ message }: { message: any }) => {
+    const isMe = message.sender_id === user.id;
+    const isSystem = message.message_type === "system";
     
     if (isSystem) {
       return (
         <div className="flex justify-center my-4">
           <Badge variant="secondary" className="text-xs px-3 py-1">
-            {message.text}
+            {message.content}
           </Badge>
         </div>
       );
@@ -182,22 +103,24 @@ const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: 
                 : "bg-muted text-foreground mr-2"
             }`}
           >
-            {message.type === "image" ? (
+            {message.message_type === "image" ? (
               <div className="space-y-2">
                 <img 
-                  src={message.image} 
+                  src={message.image_url} 
                   alt="Shared" 
                   className="rounded-lg max-w-full h-32 object-cover"
                 />
-                <p className="text-sm">{message.text}</p>
+                <p className="text-sm">{message.content}</p>
               </div>
             ) : (
-              <p className="text-sm">{message.text}</p>
+              <p className="text-sm">{message.content}</p>
             )}
           </div>
           
           <div className={`flex items-center mt-1 text-xs text-muted-foreground ${isMe ? "justify-end" : "justify-start"}`}>
-            <span>{message.timestamp}</span>
+            <span>
+              {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
             {isMe && (
               <div className="ml-1">
                 {message.status === "sent" && <Check className="w-3 h-3" />}
@@ -210,6 +133,15 @@ const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: 
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+        <p className="text-muted-foreground">Setting up chat...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -231,7 +163,7 @@ const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: 
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
                 <span>Online</span>
                 <Star className="w-3 h-3 ml-2 mr-1 text-yellow-500" />
-                <span>4.8</span>
+                <span>5.0</span>
               </div>
             </div>
           </div>
@@ -280,18 +212,6 @@ const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: 
           <MessageBubble key={message.id} message={message} />
         ))}
         
-        {isTyping && (
-          <div className="flex justify-start mb-3">
-            <div className="bg-muted rounded-2xl px-4 py-2 mr-2">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-              </div>
-            </div>
-          </div>
-        )}
-        
         <div ref={messagesEndRef} />
       </div>
 
@@ -333,7 +253,7 @@ const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: 
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={sendImage}
+            onClick={handleSendImage}
           >
             <Paperclip className="h-4 w-4" />
           </Button>
@@ -343,7 +263,7 @@ const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: 
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type a message..."
-              onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+              onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
               className="pr-10"
             />
             <Button 
@@ -356,7 +276,7 @@ const ChatScreen = ({ user, recipientName, recipientAvatar, swapItem, onBack }: 
           </div>
           
           {newMessage.trim() ? (
-            <Button onClick={sendMessage} size="icon" className="rounded-full">
+            <Button onClick={handleSendMessage} size="icon" className="rounded-full">
               <Send className="h-4 w-4" />
             </Button>
           ) : (

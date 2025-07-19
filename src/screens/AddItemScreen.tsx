@@ -41,12 +41,46 @@ const AddItemScreen = ({ user }: AddItemScreenProps) => {
     fetchCategories();
   }, []);
 
-  const handleImageUpload = () => {
-    // Mock image upload - in real app, this would use file picker and storage
-    const mockImageUrl = `https://images.unsplash.com/photo-${Date.now()}?w=400`;
-    if (images.length < 4) {
-      setImages([...images, mockImageUrl]);
-    }
+  const handleImageUpload = async () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.multiple = false;
+    
+    fileInput.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file || images.length >= 4) return;
+      
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('item-images')
+          .upload(fileName, file);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data } = supabase.storage
+          .from('item-images')
+          .getPublicUrl(fileName);
+          
+        setImages([...images, data.publicUrl]);
+        
+        toast({
+          title: "Image uploaded",
+          description: "Your image has been successfully uploaded.",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Upload failed",
+          description: error.message || "Failed to upload image",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    fileInput.click();
   };
 
   const removeImage = (index: number) => {

@@ -12,6 +12,7 @@ interface SwapItem {
   images: string[];
   preferredItems: string[];
   location: string;
+  user_id: string;
   owner: {
     name: string;
     avatar: string;
@@ -24,9 +25,10 @@ interface SwapCardProps {
   onRequestSwap: (itemId: string) => void;
   onToggleFavorite?: (itemId: string) => void;
   isFavorited?: boolean;
+  currentUserId?: string;
 }
 
-const SwapCard = ({ item, onRequestSwap, onToggleFavorite, isFavorited }: SwapCardProps) => {
+const SwapCard = ({ item, onRequestSwap, onToggleFavorite, isFavorited, currentUserId }: SwapCardProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   return (
@@ -132,13 +134,19 @@ const SwapCard = ({ item, onRequestSwap, onToggleFavorite, isFavorited }: SwapCa
             </div>
           </div>
           
-          <Button
-            size="sm"
-            onClick={() => onRequestSwap(item.id)}
-            className="ml-2"
-          >
-            Request Swap
-          </Button>
+          {currentUserId && currentUserId !== item.user_id ? (
+            <Button
+              size="sm"
+              onClick={() => onRequestSwap(item.id)}
+              className="ml-2"
+            >
+              Request Swap
+            </Button>
+          ) : currentUserId === item.user_id ? (
+            <Badge variant="outline" className="ml-2">
+              Your Item
+            </Badge>
+          ) : null}
         </div>
       </CardContent>
     </Card>

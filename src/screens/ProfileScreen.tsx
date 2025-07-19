@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +66,46 @@ const mockUserItems = [
 ];
 
 const ProfileScreen = ({ user }: ProfileScreenProps) => {
-  const [userItems] = useState(mockUserItems);
+  const [userItems, setUserItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchUserItems = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('swap_items')
+          .select(`
+            *,
+            categories (name)
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        const formattedItems = data.map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          category: item.categories?.name || 'Other',
+          images: item.images || [],
+          preferredItems: item.preferred_items || [],
+          status: item.status,
+          createdAt: new Date(item.created_at).toLocaleDateString(),
+          views: 0, // TODO: Implement view tracking
+          requests: 0 // TODO: Implement request counting
+        }));
+        
+        setUserItems(formattedItems);
+      } catch (error) {
+        console.error('Error fetching user items:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUserItems();
+  }, [user.id]);
   
   // Use actual user data when available, fall back to mock for display info
   const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';

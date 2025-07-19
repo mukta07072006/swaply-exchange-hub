@@ -55,6 +55,8 @@ const HomeScreen = ({ user }: HomeScreenProps) => {
       <ChatScreen
         user={user}
         recipientName={selectedChatItem.owner.name}
+        recipientUserId={selectedChatItem.user_id}
+        swapItemId={selectedChatItem.id}
         swapItem={{
           title: selectedChatItem.title,
           image: selectedChatItem.images[0] || "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400"
@@ -117,7 +119,7 @@ const HomeScreen = ({ user }: HomeScreenProps) => {
         {showWidgets && (
           <div className="space-y-4 mb-6">
             <div className="grid grid-cols-1 gap-4">
-              <StatsWidget />
+              <StatsWidget user={user} />
               <AIInsightsWidget />
             </div>
             
@@ -157,6 +159,7 @@ const HomeScreen = ({ user }: HomeScreenProps) => {
                 onRequestSwap={handleRequestSwap}
                 onToggleFavorite={() => toggleFavorite(item.id)}
                 isFavorited={favorites.includes(item.id)}
+                currentUserId={user.id}
               />
             ))}
           </div>
