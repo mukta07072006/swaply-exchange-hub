@@ -239,10 +239,10 @@ const ProfileScreen = ({ user }: ProfileScreenProps) => {
           <TabsContent value="active">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium">Your Active Listings</h3>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-1" />
-                Add Item
-              </Button>
+                <Button size="sm" onClick={() => window.location.hash = '#add'}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Item
+                </Button>
             </div>
 
             {activeItems.length > 0 ? (
@@ -258,7 +258,7 @@ const ProfileScreen = ({ user }: ProfileScreenProps) => {
                 <p className="text-muted-foreground mb-4">
                   Start by adding an item you'd like to swap.
                 </p>
-                <Button>
+                <Button onClick={() => window.location.hash = '#add'}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Your First Item
                 </Button>

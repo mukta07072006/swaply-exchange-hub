@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Home, Plus, MessageSquare, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +8,27 @@ interface NavigationProps {
 }
 
 const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
+  // Listen for hash changes to handle back navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1); // Remove #
+      if (hash && ['home', 'add', 'requests', 'profile'].includes(hash)) {
+        onTabChange(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    
+    // Check initial hash
+    handleHashChange();
+    
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [onTabChange]);
+
+  const handleTabClick = (tab: string) => {
+    window.location.hash = `#${tab}`;
+    onTabChange(tab);
+  };
   const tabs = [
     { id: "home", label: "Home", icon: Home },
     { id: "add", label: "Add Item", icon: Plus },
@@ -24,7 +46,7 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
           return (
             <button
               key={tab.id}
-              onClick={() => onTabChange(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               className={cn(
                 "flex flex-col items-center justify-center py-3 px-2 transition-all duration-200",
                 isActive
