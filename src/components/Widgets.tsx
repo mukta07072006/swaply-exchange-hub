@@ -43,11 +43,18 @@ export const StatsWidget = ({ className, user }: WidgetProps & { user?: any }) =
           .eq('user_id', user?.id)
           .eq('status', 'available');
           
+        // Get user's real rating from profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('rating')
+          .eq('user_id', user?.id)
+          .single();
+          
         setStats([
           { label: "Active Items", value: userActiveItems?.toString() || "0", trend: "+0", icon: TrendingUp, color: "text-green-600" },
           { label: "Total Items", value: totalItems?.toString() || "0", trend: "+0%", icon: Users, color: "text-blue-600" },
           { label: "Avg Response", value: "2h", trend: "-", icon: Clock, color: "text-purple-600" },
-          { label: "Rating", value: "5.0", trend: "+0", icon: Star, color: "text-yellow-600" },
+          { label: "Rating", value: profile?.rating?.toString() || "5.0", trend: "+0", icon: Star, color: "text-yellow-600" },
         ]);
       } catch (error) {
         console.error('Error fetching stats:', error);
@@ -158,9 +165,9 @@ export const TrendingWidget = ({ className }: WidgetProps) => {
 
 export const QuickActionsWidget = ({ className, onAction }: WidgetProps & { onAction?: (action: string) => void }) => {
   const actions = [
-    { id: "smart-match", label: "Smart Match", icon: Target, color: "bg-blue-500" },
-    { id: "featured", label: "Feature Item", icon: Award, color: "bg-purple-500" },
-    { id: "saved", label: "Saved Items", icon: Heart, color: "bg-red-500" },
+    { id: "add-item", label: "Add Item", icon: Target, color: "bg-blue-500" },
+    { id: "my-items", label: "My Items", icon: Award, color: "bg-purple-500" },
+    { id: "favorites", label: "Favorites", icon: Heart, color: "bg-red-500" },
     { id: "messages", label: "Messages", icon: MessageCircle, color: "bg-green-500" },
   ];
 
@@ -191,13 +198,49 @@ export const QuickActionsWidget = ({ className, onAction }: WidgetProps & { onAc
   );
 };
 
-export const RecentActivityWidget = ({ className }: WidgetProps) => {
-  const activities = [
-    { type: "swap", text: "John swapped iPhone for iPad", time: "2h ago", icon: "🔄" },
-    { type: "join", text: "Sarah joined your area", time: "4h ago", icon: "👋" },
-    { type: "match", text: "New match found for your bike", time: "6h ago", icon: "✨" },
-    { type: "review", text: "You received a 5-star review", time: "1d ago", icon: "⭐" },
-  ];
+export const RecentActivityWidget = ({ className, user }: WidgetProps & { user?: any }) => {
+  const [activities, setActivities] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const fetchRecentActivity = async () => {
+      try {
+        // Get recent items added by user
+        const { data: recentItems, error } = await supabase
+          .from('swap_items')
+          .select('id, title, created_at, user_id')
+          .order('created_at', { ascending: false })
+          .limit(5);
+          
+        if (error) throw error;
+        
+        // Get user profiles for the items
+        const userIds = [...new Set(recentItems?.map(item => item.user_id) || [])];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', userIds);
+        
+        const formattedActivities = recentItems?.map(item => {
+          const profile = profiles?.find(p => p.user_id === item.user_id);
+          return {
+            type: "item",
+            text: `${profile?.display_name || 'Someone'} added ${item.title}`,
+            time: new Date(item.created_at).toLocaleDateString(),
+            icon: "📦"
+          };
+        }) || [];
+        
+        setActivities(formattedActivities);
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+        setActivities([
+          { type: "swap", text: "No recent activity", time: "now", icon: "📭" }
+        ]);
+      }
+    };
+    
+    fetchRecentActivity();
+  }, [user]);
 
   return (
     <Card className={`animate-fade-in ${className}`}>

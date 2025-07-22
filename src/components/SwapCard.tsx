@@ -26,13 +26,17 @@ interface SwapCardProps {
   onToggleFavorite?: (itemId: string) => void;
   isFavorited?: boolean;
   currentUserId?: string;
+  onClick?: () => void;
 }
 
-const SwapCard = ({ item, onRequestSwap, onToggleFavorite, isFavorited, currentUserId }: SwapCardProps) => {
+const SwapCard = ({ item, onRequestSwap, onToggleFavorite, isFavorited, currentUserId, onClick }: SwapCardProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   return (
-    <Card className="mb-4 overflow-hidden hover:shadow-card transition-all duration-300 animate-fade-in">
+    <Card 
+      className="mb-4 overflow-hidden hover:shadow-card transition-all duration-300 animate-fade-in cursor-pointer"
+      onClick={onClick}
+    >
       {/* Image Carousel */}
       <div className="relative aspect-square bg-muted">
         {item.images.length > 0 ? (

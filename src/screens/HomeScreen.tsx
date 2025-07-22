@@ -15,9 +15,10 @@ import type { User } from '@supabase/supabase-js';
 
 interface HomeScreenProps {
   user: User;
+  onTabChange?: (tab: string) => void;
 }
 
-const HomeScreen = ({ user }: HomeScreenProps) => {
+const HomeScreen = ({ user, onTabChange }: HomeScreenProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -191,8 +192,24 @@ const HomeScreen = ({ user }: HomeScreenProps) => {
         <div className="space-y-4 mb-6">
           <StatsWidget user={user} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <QuickActionsWidget onAction={() => {}} />
-            <RecentActivityWidget />
+            <QuickActionsWidget onAction={(action) => {
+              switch(action) {
+                case 'add-item':
+                  onTabChange?.('add');
+                  break;
+                case 'my-items':
+                  onTabChange?.('profile');
+                  break;
+                case 'favorites':
+                  // TODO: Implement favorites filter
+                  console.log('Show favorites');
+                  break;
+                case 'messages':
+                  onTabChange?.('requests');
+                  break;
+              }
+            }} />
+            <RecentActivityWidget user={user} />
           </div>
         </div>
 
@@ -204,7 +221,8 @@ const HomeScreen = ({ user }: HomeScreenProps) => {
               item={item} 
               currentUserId={user.id}
               
-              onRequestSwap={handleSwapRequest}
+          onRequestSwap={handleSwapRequest}
+              onClick={() => setSelectedProductId(item.id)}
             />
           ))}
         </div>

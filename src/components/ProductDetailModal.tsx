@@ -95,7 +95,7 @@ const ProductDetailModal = ({ isOpen, onClose, productId, onSwapRequest, current
                 <p className="font-medium">{product.owner.name}</p>
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Star className="h-3 w-3 text-yellow-500 mr-1" />
-                  <span>4.8 (12 reviews)</span>
+                  <span>Rating: Not rated yet</span>
                 </div>
               </div>
             </div>
@@ -132,7 +132,10 @@ const ProductDetailModal = ({ isOpen, onClose, productId, onSwapRequest, current
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => console.log('Contact owner')}
+              onClick={() => {
+                // TODO: Navigate to chat screen with this user
+                console.log('Navigate to chat with:', product.owner.name);
+              }}
             >
               <MessageCircle className="h-4 w-4 mr-2" />
               Message

@@ -120,7 +120,7 @@ const AddItemScreen = ({ user }: AddItemScreenProps) => {
           category_id: categoryId,
           images,
           preferred_items: preferredItems,
-          location: 'San Francisco, CA', // Default location
+          location: localStorage.getItem('userLocation') || 'Location not set',
           status: 'available'
         });
 

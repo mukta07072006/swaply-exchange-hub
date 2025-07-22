@@ -56,15 +56,15 @@ const Index = () => {
   const renderActiveScreen = () => {
     switch (activeTab) {
       case "home":
-        return <HomeScreen user={user} />;
+        return <HomeScreen user={user} onTabChange={setActiveTab} />;
       case "add":
         return <AddItemScreen user={user} />;
       case "requests":
         return <RequestsScreen user={user} />;
       case "profile":
-        return <ProfileScreen user={user} />;
+        return <ProfileScreen user={user} onTabChange={setActiveTab} />;
       default:
-        return <HomeScreen user={user} />;
+        return <HomeScreen user={user} onTabChange={setActiveTab} />;
     }
   };
 
