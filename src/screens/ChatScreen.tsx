@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   ArrowLeft, 
   Send, 
@@ -21,11 +23,76 @@ import {
 } from "lucide-react";
 import { useRealTimeChat } from "@/hooks/useRealTimeChat";
 
+const RatingDialog = ({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  recipientName 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onSubmit: (rating: number, comment: string) => void;
+  recipientName: string;
+}) => {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+
+  const handleSubmit = () => {
+    onSubmit(rating, comment);
+    onClose();
+    setRating(5);
+    setComment("");
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Rate {recipientName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Rating</label>
+            <div className="flex items-center space-x-1 mt-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`h-6 w-6 cursor-pointer ${
+                    star <= rating ? 'text-yellow-500 fill-current' : 'text-gray-300'
+                  }`}
+                  onClick={() => setRating(star)}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Comment (optional)</label>
+            <Textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Share your experience..."
+              className="mt-2"
+            />
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit}>
+              Submit Rating
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 interface ChatScreenProps {
   user: any;
   recipientName: string;
   recipientUserId?: string;
-  swapItemId?: string;
+  swapRequestId?: string;
   recipientAvatar?: string;
   swapItem?: {
     title: string;
@@ -34,12 +101,13 @@ interface ChatScreenProps {
   onBack: () => void;
 }
 
-const ChatScreen = ({ user, recipientName, recipientUserId, swapItemId, recipientAvatar, swapItem, onBack }: ChatScreenProps) => {
+const ChatScreen = ({ user, recipientName, recipientUserId, swapRequestId, recipientAvatar, swapItem, onBack }: ChatScreenProps) => {
   const [newMessage, setNewMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { messages, loading, sendMessage, sendImage } = useRealTimeChat(user, swapItemId);
+  const { messages, loading, sendMessage, sendImage, submitRating } = useRealTimeChat(user, swapRequestId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -67,6 +135,12 @@ const ChatScreen = ({ user, recipientName, recipientUserId, swapItemId, recipien
     const file = event.target.files?.[0];
     if (file) {
       sendImage(file);
+    }
+  };
+
+  const handleRatingSubmit = (rating: number, comment: string) => {
+    if (recipientUserId && swapRequestId) {
+      submitRating(recipientUserId, rating, comment, swapRequestId);
     }
   };
 
@@ -177,12 +251,22 @@ const ChatScreen = ({ user, recipientName, recipientUserId, swapItemId, recipien
             <Button variant="ghost" size="icon">
               <Video className="h-4 w-4" />
             </Button>
+            <Button variant="ghost" size="icon" onClick={() => setShowRatingDialog(true)}>
+              <Star className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon">
               <MoreVertical className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </div>
+
+      <RatingDialog 
+        isOpen={showRatingDialog}
+        onClose={() => setShowRatingDialog(false)}
+        onSubmit={handleRatingSubmit}
+        recipientName={recipientName}
+      />
 
       {/* Swap Item Widget */}
       {swapItem && (

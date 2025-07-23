@@ -170,6 +170,8 @@ export const useRealTimeChat = (user: User, swapRequestId?: string) => {
   useEffect(() => {
     if (!chatRoom) return;
 
+    console.log('Setting up real-time subscription for chat room:', chatRoom.id);
+
     const channel = supabase
       .channel(`chat_room_${chatRoom.id}`)
       .on(
@@ -181,6 +183,7 @@ export const useRealTimeChat = (user: User, swapRequestId?: string) => {
           filter: `chat_room_id=eq.${chatRoom.id}`
         },
         (payload) => {
+          console.log('New message received:', payload);
           const newMessage = {
             ...payload.new,
             status: 'delivered' as const,
@@ -190,14 +193,21 @@ export const useRealTimeChat = (user: User, swapRequestId?: string) => {
           setMessages(prev => {
             // Avoid duplicates
             const exists = prev.find(msg => msg.id === newMessage.id);
-            if (exists) return prev;
+            if (exists) {
+              console.log('Message already exists, skipping:', newMessage.id);
+              return prev;
+            }
+            console.log('Adding new message to list:', newMessage);
             return [...prev, newMessage];
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [chatRoom]);
@@ -222,11 +232,40 @@ export const useRealTimeChat = (user: User, swapRequestId?: string) => {
     }
   }, [chatRoom]);
 
+  const submitRating = async (ratedUserId: string, rating: number, comment: string, swapRequestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_ratings')
+        .insert({
+          rater_user_id: user.id,
+          rated_user_id: ratedUserId,
+          rating,
+          comment,
+          swap_request_id: swapRequestId
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Rating submitted",
+        description: "Thank you for your feedback!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to submit rating",
+        variant: "destructive",
+      });
+      console.error('Error submitting rating:', error);
+    }
+  };
+
   return {
     messages,
     chatRoom,
     loading,
     sendMessage,
-    sendImage
+    sendImage,
+    submitRating
   };
 };
