@@ -183,10 +183,16 @@ export const useRealTimeChat = (user: User, swapRequestId?: string) => {
         (payload) => {
           const newMessage = {
             ...payload.new,
-            status: 'delivered' as const
+            status: 'delivered' as const,
+            message_type: (payload.new.message_type as 'text' | 'image' | 'system') || 'text'
           } as ChatMessage;
           
-          setMessages(prev => [...prev, newMessage]);
+          setMessages(prev => {
+            // Avoid duplicates
+            const exists = prev.find(msg => msg.id === newMessage.id);
+            if (exists) return prev;
+            return [...prev, newMessage];
+          });
         }
       )
       .subscribe();

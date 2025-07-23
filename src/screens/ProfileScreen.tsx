@@ -103,6 +103,55 @@ const ProfileScreen = ({ user, onTabChange }: ProfileScreenProps) => {
       description: "Edit profile feature coming soon!",
     });
   };
+
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from('swap_items')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      setUserItems(prev => prev.filter(item => item.id !== itemId));
+      toast({
+        title: "Item deleted",
+        description: "Your item has been deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete item",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMarkAsSwapped = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from('swap_items')
+        .update({ status: 'swapped' })
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      setUserItems(prev => prev.map(item => 
+        item.id === itemId ? { ...item, status: 'swapped' } : item
+      ));
+      
+      toast({
+        title: "Item marked as swapped",
+        description: "Item moved to swap history",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update item status",
+        variant: "destructive",
+      });
+    }
+  };
   
   // Use actual user data when available
   const displayName = userProfile?.display_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';
@@ -158,7 +207,18 @@ const ProfileScreen = ({ user, onTabChange }: ProfileScreenProps) => {
                   <Edit3 className="h-3 w-3 mr-1" />
                   Edit
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleMarkAsSwapped(item.id)}
+                >
+                  ✅ Swapped
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => handleDeleteItem(item.id)}
+                >
                   Delete
                 </Button>
               </div>

@@ -39,7 +39,7 @@ const ChatScreen = ({ user, recipientName, recipientUserId, swapItemId, recipien
   const [isRecording, setIsRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { messages, loading, sendMessage } = useRealTimeChat(user, swapItemId);
+  const { messages, loading, sendMessage, sendImage } = useRealTimeChat(user, swapItemId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,9 +63,11 @@ const ChatScreen = ({ user, recipientName, recipientUserId, swapItemId, recipien
     }, 3000);
   };
 
-  const handleSendImage = () => {
-    // TODO: Implement image upload to storage
-    sendMessage("Photo", "image", "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400");
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      sendImage(file);
+    }
   };
 
   const MessageBubble = ({ message }: { message: any }) => {
@@ -250,13 +252,22 @@ const ChatScreen = ({ user, recipientName, recipientUserId, swapItemId, recipien
       {/* Input Area */}
       <div className="sticky bottom-0 bg-card/95 backdrop-blur-sm border-t border-border px-4 py-3">
         <div className="flex items-center space-x-2">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={handleSendImage}
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
+          <label htmlFor="image-upload">
+            <input
+              id="image-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <Button 
+              variant="ghost" 
+              size="icon"
+              type="button"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+          </label>
           
           <div className="flex-1 relative">
             <Input
