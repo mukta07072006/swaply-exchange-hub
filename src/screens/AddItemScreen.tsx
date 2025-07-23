@@ -1,151 +1,137 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, Camera, ArrowLeft } from "lucide-react";
+import { Camera, X, Plus, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from '@supabase/supabase-js';
 
 interface AddItemScreenProps {
   user: User;
+  onBack?: () => void;
 }
 
-const AddItemScreen = ({ user }: AddItemScreenProps) => {
-  const [images, setImages] = useState<string[]>([]);
+const AddItemScreen = ({ user, onBack }: AddItemScreenProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [categories, setCategories] = useState<any[]>([]);
+  const [category, setCategory] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [preferredItems, setPreferredItems] = useState<string[]>([]);
-  const [newPreferredItem, setNewPreferredItem] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentPreferredItem, setCurrentPreferredItem] = useState("");
+  const [location, setLocation] = useState("");
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Load categories
-  useEffect(() => {
-    const fetchCategories = async () => {
-      const { data } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
-      
-      if (data) {
-        setCategories(data);
-      }
-    };
-    
-    fetchCategories();
-  }, []);
+  const categories = [
+    "Electronics", "Fashion", "Books", "Home & Garden", 
+    "Sports", "Toys", "Music", "Art", "Other"
+  ];
 
-  const handleImageUpload = async () => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.multiple = false;
-    
-    fileInput.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file || images.length >= 4) return;
-      
-      try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('item-images')
-          .upload(fileName, file);
-          
-        if (uploadError) throw uploadError;
-        
-        const { data } = supabase.storage
-          .from('item-images')
-          .getPublicUrl(fileName);
-          
-        setImages([...images, data.publicUrl]);
-        
-        toast({
-          title: "Image uploaded",
-          description: "Your image has been successfully uploaded.",
-        });
-      } catch (error: any) {
-        toast({
-          title: "Upload failed",
-          description: error.message || "Failed to upload image",
-          variant: "destructive",
-        });
-      }
-    };
-    
-    fileInput.click();
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            setImages(prev => [...prev, e.target.result as string]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
   };
 
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const addPreferredItem = () => {
-    if (newPreferredItem.trim() && !preferredItems.includes(newPreferredItem.trim())) {
-      setPreferredItems([...preferredItems, newPreferredItem.trim()]);
-      setNewPreferredItem("");
+    if (currentPreferredItem.trim() && !preferredItems.includes(currentPreferredItem.trim())) {
+      setPreferredItems(prev => [...prev, currentPreferredItem.trim()]);
+      setCurrentPreferredItem("");
     }
   };
 
   const removePreferredItem = (item: string) => {
-    setPreferredItems(preferredItems.filter(i => i !== item));
+    setPreferredItems(prev => prev.filter(i => i !== item));
   };
 
-  const handleSubmit = async () => {
-    if (!title.trim() || !description.trim() || !categoryId) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!title.trim() || !description.trim() || !category || !location.trim()) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
+        title: "Error",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
     }
 
-    setIsSubmitting(true);
+    setLoading(true);
     
     try {
-      const { error } = await supabase
+      // Get category ID first
+      const { data: categoryData, error: categoryError } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('name', category)
+        .single();
+
+      if (categoryError) {
+        console.error('Category error:', categoryError);
+        throw new Error('Failed to find category');
+      }
+
+      const { data, error } = await supabase
         .from('swap_items')
         .insert({
-          user_id: user.id,
           title: title.trim(),
           description: description.trim(),
-          category_id: categoryId,
+          category_id: categoryData.id,
           images,
           preferred_items: preferredItems,
-          location: localStorage.getItem('userLocation') || 'Location not set',
+          location: location.trim(),
+          user_id: user.id,
           status: 'available'
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
       toast({
-        title: "Item Posted!",
-        description: "Your item has been successfully added to the marketplace.",
+        title: "Success",
+        description: "Your item has been listed successfully!",
       });
-      
+
       // Reset form
-      setImages([]);
       setTitle("");
       setDescription("");
-      setCategoryId("");
+      setCategory("");
+      setImages([]);
       setPreferredItems([]);
-      setNewPreferredItem("");
+      setCurrentPreferredItem("");
+      setLocation("");
+      
+      // Go back to previous screen
+      onBack?.();
     } catch (error: any) {
+      console.error('Error adding item:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to post item",
+        description: error.message || "Failed to add item. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
@@ -153,141 +139,148 @@ const AddItemScreen = ({ user }: AddItemScreenProps) => {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 px-4 py-4 border-b border-border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Button variant="ghost" size="icon" className="mr-2">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-xl font-bold">Add New Item</h1>
-          </div>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={isSubmitting}
-            className="min-w-[80px]"
-          >
-            {isSubmitting ? "Posting..." : "Post"}
+        <div className="flex items-center space-x-3">
+          <Button variant="ghost" size="icon" onClick={onBack}>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
+          <h1 className="text-2xl font-bold">Add New Item</h1>
         </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-20">
-        <div className="space-y-6">
-          {/* Images Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Photos</CardTitle>
-              <p className="text-sm text-muted-foreground">Add up to 4 photos of your item</p>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                {images.map((image, index) => (
-                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-                    <img src={image} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => removeImage(index)}
-                      className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full hover:bg-black/70"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-                
-                {images.length < 4 && (
-                  <button
-                    onClick={handleImageUpload}
-                    className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
-                  >
-                    <Camera className="h-6 w-6 mb-2" />
-                    <span className="text-sm">Add Photo</span>
-                  </button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Item Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Item Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Title *</label>
+        <Card>
+          <CardHeader>
+            <CardTitle>Item Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Title */}
+              <div className="space-y-2">
+                <Label htmlFor="title">Title *</Label>
                 <Input
+                  id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="What are you offering?"
-                  className="w-full"
+                  required
                 />
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-2 block">Category *</label>
-                <Select value={categoryId} onValueChange={setCategoryId}>
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description">Description *</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe your item in detail..."
+                  rows={4}
+                  required
+                />
+              </div>
+
+              {/* Category */}
+              <div className="space-y-2">
+                <Label htmlFor="category">Category *</Label>
+                <Select value={category} onValueChange={setCategory} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-2 block">Description *</label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe your item in detail..."
-                  className="min-h-[100px] w-full"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Preferred Items */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">What are you looking for?</CardTitle>
-              <p className="text-sm text-muted-foreground">Add items you'd like to receive in exchange</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
+              {/* Location */}
+              <div className="space-y-2">
+                <Label htmlFor="location">Location *</Label>
                 <Input
-                  value={newPreferredItem}
-                  onChange={(e) => setNewPreferredItem(e.target.value)}
-                  placeholder="e.g., iPhone, Books, Bike"
-                  onKeyPress={(e) => e.key === "Enter" && addPreferredItem()}
-                  className="flex-1"
+                  id="location"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Your location (city, area)"
+                  required
                 />
-                <Button onClick={addPreferredItem} size="icon" variant="outline">
-                  <Plus className="h-4 w-4" />
-                </Button>
               </div>
 
-              {preferredItems.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {preferredItems.map((item, index) => (
-                    <Badge key={index} variant="secondary" className="pr-1">
-                      {item}
+              {/* Images */}
+              <div className="space-y-2">
+                <Label>Images (Optional)</Label>
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  {images.map((image, index) => (
+                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                      <img src={image} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
                       <button
-                        onClick={() => removePreferredItem(item)}
-                        className="ml-1 hover:text-destructive"
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
                       >
                         <X className="h-3 w-3" />
                       </button>
+                    </div>
+                  ))}
+                  {images.length < 5 && (
+                    <label className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary cursor-pointer flex items-center justify-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <Camera className="h-6 w-6 text-muted-foreground" />
+                    </label>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">Add up to 5 images</p>
+              </div>
+
+              {/* Preferred Items */}
+              <div className="space-y-2">
+                <Label>What are you looking for?</Label>
+                <div className="flex space-x-2">
+                  <Input
+                    value={currentPreferredItem}
+                    onChange={(e) => setCurrentPreferredItem(e.target.value)}
+                    placeholder="e.g., iPhone, Books, etc."
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addPreferredItem();
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={addPreferredItem} variant="outline">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {preferredItems.map(item => (
+                    <Badge key={item} variant="secondary" className="cursor-pointer" onClick={() => removePreferredItem(item)}>
+                      {item}
+                      <X className="h-3 w-3 ml-1" />
                     </Badge>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </div>
+
+              {/* Submit Button - Moved to bottom */}
+              <div className="pt-4">
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={loading}
+                >
+                  {loading ? "Posting..." : "Post Item"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

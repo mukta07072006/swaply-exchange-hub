@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRightLeft, Heart, MapPin } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface SwapItem {
   id: string;
@@ -31,6 +33,46 @@ interface SwapCardProps {
 
 const SwapCard = ({ item, onRequestSwap, onToggleFavorite, isFavorited, currentUserId, onClick }: SwapCardProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const { toast } = useToast();
+
+  const handleSwapRequest = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!currentUserId) {
+      return;
+    }
+
+    try {
+      // Create a direct message/notification instead of requiring user to have items
+      const { error } = await supabase
+        .from('swap_requests')
+        .insert({
+          requester_id: currentUserId,
+          owner_id: item.user_id,
+          requested_item_id: item.id,
+          offered_item_id: item.id, // Using same item ID as placeholder
+          status: 'pending',
+          message: `Hi! I'm interested in swapping for your ${item.title}. Let's discuss what I can offer in return.`
+        });
+
+      if (error) throw error;
+
+      // Show success message
+      toast({
+        title: "Swap Request Sent",
+        description: "Your swap request has been sent successfully!",
+      });
+
+      onRequestSwap(item.id);
+    } catch (error: any) {
+      console.error('Error sending swap request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send swap request. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Card 
@@ -52,7 +94,10 @@ const SwapCard = ({ item, onRequestSwap, onToggleFavorite, isFavorited, currentU
                   {item.images.map((_, index) => (
                     <button
                       key={index}
-                      onClick={() => setCurrentImageIndex(index)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex(index);
+                      }}
                       className={`w-2 h-2 rounded-full transition-all ${
                         index === currentImageIndex ? "bg-white" : "bg-white/50"
                       }`}
@@ -74,7 +119,10 @@ const SwapCard = ({ item, onRequestSwap, onToggleFavorite, isFavorited, currentU
         {/* Favorite Button */}
         {onToggleFavorite && (
           <button
-            onClick={() => onToggleFavorite(item.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(item.id);
+            }}
             className="absolute top-2 left-2 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors"
           >
             <Heart
@@ -141,7 +189,7 @@ const SwapCard = ({ item, onRequestSwap, onToggleFavorite, isFavorited, currentU
           {currentUserId && currentUserId !== item.user_id ? (
             <Button
               size="sm"
-              onClick={() => onRequestSwap(item.id)}
+              onClick={handleSwapRequest}
               className="ml-2"
             >
               Request Swap

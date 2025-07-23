@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -23,76 +24,57 @@ export interface ChatRoom {
   updated_at: string;
 }
 
-export const useRealTimeChat = (user: User, otherUserId?: string, swapItemId?: string) => {
+export const useRealTimeChat = (user: User, swapRequestId?: string) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatRoom, setChatRoom] = useState<ChatRoom | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const createChatRoom = async () => {
-    if (!otherUserId || !swapItemId) return null;
+  const findOrCreateChatRoom = async () => {
+    if (!swapRequestId) return;
 
     try {
-      // First create a swap request
+      // Get swap request details
       const { data: swapRequest, error: swapError } = await supabase
         .from('swap_requests')
-        .insert({
-          requester_id: user.id,
-          owner_id: otherUserId,
-          requested_item_id: swapItemId,
-          offered_item_id: swapItemId, // TODO: Should be selected by user
-          status: 'pending',
-          message: `Hi! I'm interested in swapping for your item.`
-        })
-        .select()
+        .select('*')
+        .eq('id', swapRequestId)
         .single();
 
       if (swapError) throw swapError;
 
-      // Then create chat room
-      const { data: room, error: roomError } = await supabase
-        .from('chat_rooms')
-        .insert({
-          participant_1: user.id,
-          participant_2: otherUserId,
-          swap_request_id: swapRequest.id
-        })
-        .select()
-        .single();
-
-      if (roomError) throw roomError;
-
-      setChatRoom(room);
-      return room;
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to create chat room",
-        variant: "destructive",
-      });
-      console.error('Error creating chat room:', error);
-      return null;
-    }
-  };
-
-  const findOrCreateChatRoom = async () => {
-    if (!otherUserId) return;
-
-    try {
-      // Check if chat room already exists
-      const { data: existingRoom } = await supabase
+      // Check if chat room already exists for this swap request
+      const { data: existingRoom, error: roomError } = await supabase
         .from('chat_rooms')
         .select('*')
-        .or(`and(participant_1.eq.${user.id},participant_2.eq.${otherUserId}),and(participant_1.eq.${otherUserId},participant_2.eq.${user.id})`)
+        .eq('swap_request_id', swapRequestId)
         .single();
 
       if (existingRoom) {
         setChatRoom(existingRoom);
       } else {
-        await createChatRoom();
+        // Create new chat room
+        const { data: newRoom, error: createError } = await supabase
+          .from('chat_rooms')
+          .insert({
+            participant_1: swapRequest.requester_id,
+            participant_2: swapRequest.owner_id,
+            swap_request_id: swapRequestId
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+
+        setChatRoom(newRoom);
       }
-    } catch (error) {
-      console.error('Error finding chat room:', error);
+    } catch (error: any) {
+      console.error('Error finding/creating chat room:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load chat room",
+        variant: "destructive",
+      });
     }
   };
 
@@ -140,7 +122,7 @@ export const useRealTimeChat = (user: User, otherUserId?: string, swapItemId?: s
 
       if (error) throw error;
 
-      // Don't add to local state here - let real-time subscription handle it
+      // Message will be added via real-time subscription
     } catch (error: any) {
       toast({
         title: "Error",
@@ -148,6 +130,39 @@ export const useRealTimeChat = (user: User, otherUserId?: string, swapItemId?: s
         variant: "destructive",
       });
       console.error('Error sending message:', error);
+    }
+  };
+
+  const sendImage = async (imageFile: File) => {
+    if (!chatRoom) return;
+
+    try {
+      // Upload image to Supabase storage
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `chat-images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('item-images')
+        .upload(filePath, imageFile);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('item-images')
+        .getPublicUrl(filePath);
+
+      // Send message with image
+      await sendMessage('Image', 'image', publicUrl);
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to send image",
+        variant: "destructive",
+      });
+      console.error('Error sending image:', error);
     }
   };
 
@@ -189,10 +204,10 @@ export const useRealTimeChat = (user: User, otherUserId?: string, swapItemId?: s
       setLoading(false);
     };
 
-    if (otherUserId) {
+    if (swapRequestId) {
       init();
     }
-  }, [otherUserId]);
+  }, [swapRequestId]);
 
   // Load messages when chat room is set
   useEffect(() => {
@@ -205,6 +220,7 @@ export const useRealTimeChat = (user: User, otherUserId?: string, swapItemId?: s
     messages,
     chatRoom,
     loading,
-    sendMessage
+    sendMessage,
+    sendImage
   };
 };
