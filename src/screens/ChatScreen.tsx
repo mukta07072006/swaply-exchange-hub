@@ -39,7 +39,7 @@ const ChatScreen = ({ user, recipientName, recipientUserId, swapItemId, recipien
   const [isRecording, setIsRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { messages, loading, sendMessage } = useRealTimeChat(user, recipientUserId, swapItemId);
+  const { messages, loading, sendMessage } = useRealTimeChat(user, swapItemId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

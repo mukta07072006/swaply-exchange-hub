@@ -56,13 +56,13 @@ const RequestsScreen = ({ user }: RequestsScreenProps) => {
             id,
             title,
             images,
-            profiles!swap_items_user_id_fkey (display_name)
+            user_id
           ),
           requested_item:swap_items!swap_requests_requested_item_id_fkey (
             id,
             title,
             images,
-            profiles!swap_items_user_id_fkey (display_name)
+            user_id
           )
         `)
         .or(`requester_id.eq.${user.id},owner_id.eq.${user.id}`)
@@ -80,13 +80,13 @@ const RequestsScreen = ({ user }: RequestsScreenProps) => {
           id: request.offered_item?.id || '',
           title: request.offered_item?.title || 'Unknown Item',
           images: request.offered_item?.images || [],
-          owner: request.offered_item?.profiles?.display_name || 'User'
+          owner: 'User'
         },
         requested_item: {
           id: request.requested_item?.id || '',
           title: request.requested_item?.title || 'Unknown Item',  
           images: request.requested_item?.images || [],
-          owner: request.requested_item?.profiles?.display_name || 'User'
+          owner: 'User'
         }
       }));
 
@@ -449,7 +449,7 @@ const RequestsScreen = ({ user }: RequestsScreenProps) => {
                     onChange={handleImageUpload}
                     className="hidden"
                   />
-                  <Button variant="outline" size="icon" as="span">
+                  <Button variant="outline" size="icon" type="button">
                     📷
                   </Button>
                 </label>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, Edit3, Star, Calendar, MapPin, Plus, LogOut, User } from "lucide-react";
+import { Settings, Edit3, Star, Calendar, MapPin, Plus, LogOut, User as UserIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { User } from '@supabase/supabase-js';
@@ -202,7 +202,7 @@ const ProfileScreen = ({ user, onTabChange }: ProfileScreenProps) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleEditProfile}>
-                <User className="mr-2 h-4 w-4" />
+                <UserIcon className="mr-2 h-4 w-4" />
                 Edit Profile
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout}>
